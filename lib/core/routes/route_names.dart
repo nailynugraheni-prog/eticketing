@@ -17,6 +17,8 @@ class RouteNames {
   static const String ticketStatusUpdate = '/ticket-status-update';
   static const String ticketAssign = '/ticket-assign';
 
+  static const String manageUser = '/manage-user';
+
   static const String notifications = '/notifications';
   static const String profile = '/profile';
 }

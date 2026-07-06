@@ -12,33 +12,41 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _usernameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  String _role = 'user';
 
   @override
   void dispose() {
-    _usernameCtrl.dispose();
+    _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     final auth = context.read<AuthProvider>();
-    await auth.login(
+
+    final result = await auth.login(
       LoginRequestModel(
-        username: _usernameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text.trim(),
-        role: _role,
       ),
     );
 
     if (!mounted) return;
 
-    if (_role == 'user') {
-      Navigator.pushReplacementNamed(context, RouteNames.userDashboard);
-    } else {
+    if (!result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message)),
+      );
+      return;
+    }
+
+    final role = result.role;
+
+    if (role == 'admin' || role == 'helpdesk') {
       Navigator.pushReplacementNamed(context, RouteNames.staffDashboard);
+    } else {
+      Navigator.pushReplacementNamed(context, RouteNames.userDashboard);
     }
   }
 
@@ -59,9 +67,10 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             TextField(
-              controller: _usernameCtrl,
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
-                labelText: 'Username',
+                labelText: 'Email',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -73,23 +82,6 @@ class _LoginPageState extends State<LoginPage> {
                 labelText: 'Password',
                 border: OutlineInputBorder(),
               ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _role,
-              decoration: const InputDecoration(
-                labelText: 'Login sebagai',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'user', child: Text('User')),
-                DropdownMenuItem(value: 'staff', child: Text('Admin / Helpdesk')),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _role = value);
-                }
-              },
             ),
             const SizedBox(height: 20),
             ElevatedButton(

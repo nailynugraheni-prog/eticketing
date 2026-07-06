@@ -10,11 +10,10 @@ import '../../features/tickets/user/presentation/pages/ticket_list_page.dart';
 import '../../features/tickets/user/presentation/pages/ticket_tracking_page.dart';
 import '../../features/tickets/staff/presentation/pages/ticket_queue_page.dart';
 import '../../features/tickets/staff/presentation/pages/ticket_detail_admin_page.dart';
-import '../../features/tickets/staff/presentation/pages/ticket_response_page.dart';
-import '../../features/tickets/staff/presentation/pages/ticket_status_update_page.dart';
 import '../../features/tickets/staff/presentation/pages/ticket_assign_page.dart';
-import '../../features/notifications/presentation/pages/notification_page.dart';
+import '../../features/notifications/user/presentation/pages/notification_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/user_management/presentation/pages/manage_user_page.dart';
 
 class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -44,12 +43,10 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const TicketQueuePage());
       case RouteNames.ticketDetailAdmin:
         return MaterialPageRoute(builder: (_) => const TicketDetailAdminPage(ticketId: 'TCK-001'));
-      case RouteNames.ticketResponse:
-        return MaterialPageRoute(builder: (_) => const TicketResponsePage());
-      case RouteNames.ticketStatusUpdate:
-        return MaterialPageRoute(builder: (_) => const TicketStatusUpdatePage());
       case RouteNames.ticketAssign:
         return MaterialPageRoute(builder: (_) => const TicketAssignPage());
+      case RouteNames.manageUser:
+        return MaterialPageRoute(builder: (_) => const ManageUserPage());
       case RouteNames.notifications:
         return MaterialPageRoute(builder: (_) => const NotificationPage());
       case RouteNames.profile:

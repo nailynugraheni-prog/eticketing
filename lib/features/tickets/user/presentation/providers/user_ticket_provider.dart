@@ -1,83 +1,96 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../data/models/ticket_model.dart';
 import '../../data/models/ticket_detail_model.dart';
+import '../../data/repositories/user_ticket_repository.dart';
 
 class UserTicketProvider extends ChangeNotifier {
-  final List<TicketModel> _tickets = [
-    TicketModel(
-      id: 'TCK-001',
-      title: 'Laptop tidak bisa connect WiFi',
-      category: 'Network',
-      description: 'WiFi terdeteksi tapi tidak bisa connect',
-      status: 'Open',
-      createdAt: '2026-04-08',
-      comments: ['Sudah dicoba restart'],
-    ),
-    TicketModel(
-      id: 'TCK-002',
-      title: 'Aplikasi crash saat login',
-      category: 'Application',
-      description: 'Aplikasi langsung close setelah login',
-      status: 'In Progress',
-      createdAt: '2026-04-08',
-      comments: ['Masalah terjadi setelah update'],
-    ),
-  ];
+  final _repo = UserTicketRepository();
+  final ImagePicker _picker = ImagePicker();
+
+  final List<TicketModel> _tickets = [];
+  final List<XFile> _pendingAttachments = [];
+  bool _isLoading = false;
 
   List<TicketModel> get tickets => List.unmodifiable(_tickets);
+  List<XFile> get pendingAttachments => List.unmodifiable(_pendingAttachments);
+  bool get isLoading => _isLoading;
 
-  TicketDetailModel getDetail(String id) {
-    final ticket = _tickets.firstWhere((e) => e.id == id);
-    return TicketDetailModel(
-      id: ticket.id,
-      title: ticket.title,
-      category: ticket.category,
-      description: ticket.description,
-      status: ticket.status,
-      createdAt: ticket.createdAt,
-      timeline: [
-        'Tiket dibuat',
-        'Tiket diterima helpdesk',
-        'Sedang diproses',
-      ],
-    );
+  Future<void> loadMyTickets() async {
+    _isLoading = true;
+    notifyListeners();
+
+    _tickets
+      ..clear()
+      ..addAll(await _repo.getMyTickets());
+
+    _isLoading = false;
+    notifyListeners();
   }
 
-  void createTicket({
+  Future<void> pickFromCamera() async {
+    final photo = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+    if (photo != null) {
+      _pendingAttachments.add(photo);
+      notifyListeners();
+    }
+  }
+
+  Future<void> pickFromGallery() async {
+    final photos = await _picker.pickMultiImage(imageQuality: 70);
+    if (photos.isNotEmpty) {
+      _pendingAttachments.addAll(photos);
+      notifyListeners();
+    }
+  }
+
+  void removeAttachment(int index) {
+    if (index < 0 || index >= _pendingAttachments.length) return;
+    _pendingAttachments.removeAt(index);
+    notifyListeners();
+  }
+
+  Future<void> createTicket({
     required String title,
     required String category,
     required String description,
-  }) {
-    final newTicket = TicketModel(
-      id: 'TCK-${(_tickets.length + 1).toString().padLeft(3, '0')}',
-      title: title,
-      category: category,
-      description: description,
-      status: 'Open',
-      createdAt: DateTime.now().toIso8601String().split('T').first,
-      comments: const [],
-    );
-    _tickets.insert(0, newTicket);
+  }) async {
+    _isLoading = true;
     notifyListeners();
+
+    try {
+      // FIX: sebelumnya return value dibuang, jadi kalau repository balik
+      // null (misal user == null / session expired), provider tetap
+      // lanjut seolah sukses. Sekarang di-cek dan di-throw kalau gagal,
+      // supaya try-catch di halaman punya sesuatu untuk ditangkap.
+      final result = await _repo.createTicket(
+        title: title,
+        category: category,
+        description: description,
+        attachments: _pendingAttachments,
+      );
+
+      if (result == null) {
+        throw Exception('Gagal membuat tiket. Silakan login ulang.');
+      }
+
+      _pendingAttachments.clear();
+      await loadMyTickets();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  void addComment(String ticketId, String comment) {
-    final index = _tickets.indexWhere((e) => e.id == ticketId);
-    if (index == -1) return;
-
-    final ticket = _tickets[index];
-    final updated = ticket.copyWith(
-      comments: [...ticket.comments, comment],
-    );
-    _tickets[index] = updated;
-    notifyListeners();
+  Future<TicketDetailModel?> getDetail(String id) {
+    return _repo.getDetail(id);
   }
 
-  void updateStatus(String ticketId, String status) {
-    final index = _tickets.indexWhere((e) => e.id == ticketId);
-    if (index == -1) return;
-
-    _tickets[index] = _tickets[index].copyWith(status: status);
-    notifyListeners();
+  Future<void> addComment(String ticketId, String comment) async {
+    await _repo.addComment(ticketCodeOrId: ticketId, message: comment);
+    await loadMyTickets();
   }
 }

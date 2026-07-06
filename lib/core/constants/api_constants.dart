@@ -7,7 +7,7 @@ class ApiConstants {
   static const String resetPassword = '/auth/reset-password';
 
   static const String tickets = '/tickets';
-  static const String ticketDetail = '/tickets detail'; 
+  static const String ticketDetail = '/tickets detail';
   static const String ticketComments = '/tickets/comments';
   static const String notifications = '/notifications';
   static const String profile = '/profile';

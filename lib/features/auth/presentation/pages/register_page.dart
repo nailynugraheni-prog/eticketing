@@ -14,29 +14,40 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _nameCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _usernameCtrl.dispose();
+    _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     final auth = context.read<AuthProvider>();
-    await auth.register(
-      RegisterRequestModel(
-        name: _nameCtrl.text.trim(),
-        username: _usernameCtrl.text.trim(),
-        password: _passwordCtrl.text.trim(),
-        role: 'user',
-      ),
-    );
 
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, RouteNames.userDashboard);
+    try {
+      await auth.register(
+        RegisterRequestModel(
+          name: _nameCtrl.text.trim(),
+          username: _usernameCtrl.text.trim(),
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text.trim(),
+          role: 'user',
+        ),
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, RouteNames.login);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
   }
 
   @override
@@ -61,6 +72,15 @@ class _RegisterPageState extends State<RegisterPage> {
               controller: _usernameCtrl,
               decoration: const InputDecoration(
                 labelText: 'Username',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
                 border: OutlineInputBorder(),
               ),
             ),

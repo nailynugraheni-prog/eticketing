@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/ticket_detail_model.dart';
 import '../providers/user_ticket_provider.dart';
 
+/// Halaman detail tiket, VIEW-ONLY. Tidak ada kolom komentar di sini --
+/// untuk kirim komentar, user perlu masuk lewat Tracking Tiket
+/// (lihat ticket_tracking_detail_page.dart).
 class TicketDetailPage extends StatefulWidget {
   final String ticketId;
 
@@ -12,74 +16,150 @@ class TicketDetailPage extends StatefulWidget {
 }
 
 class _TicketDetailPageState extends State<TicketDetailPage> {
-  final _commentCtrl = TextEditingController();
+  late Future<TicketDetailModel?> _detailFuture;
 
   @override
-  void dispose() {
-    _commentCtrl.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _detailFuture = context.read<UserTicketProvider>().getDetail(widget.ticketId);
   }
 
-  void _sendComment() {
-    final text = _commentCtrl.text.trim();
-    if (text.isEmpty) return;
-
-    context.read<UserTicketProvider>().addComment(widget.ticketId, text);
-    _commentCtrl.clear();
+  void _openFullscreen(BuildContext context, String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.network(
+                url,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white54,
+                  size: 64,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<UserTicketProvider>();
-    final detail = provider.getDetail(widget.ticketId);
-    final ticket = provider.tickets.firstWhere((e) => e.id == widget.ticketId);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Tiket')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(ticket.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text('ID: ${ticket.id}'),
-          Text('Kategori: ${ticket.category}'),
-          Text('Status: ${ticket.status}'),
-          const SizedBox(height: 16),
-          const Text('Deskripsi', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6),
-          Text(ticket.description),
-          const SizedBox(height: 16),
-          const Text('Timeline', style: TextStyle(fontWeight: FontWeight.bold)),
-          ...detail.timeline.map((e) => ListTile(
-            dense: true,
-            leading: const Icon(Icons.check_circle_outline),
-            title: Text(e),
-          )),
-          const SizedBox(height: 16),
-          const Text('Komentar', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          ...ticket.comments.map(
-                (e) => Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(e),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _commentCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Tambah komentar',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: _sendComment,
-            child: const Text('Kirim Komentar'),
-          ),
-        ],
+      body: FutureBuilder<TicketDetailModel?>(
+        future: _detailFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final detail = snapshot.data;
+          if (detail == null) {
+            return const Center(child: Text('Tiket tidak ditemukan'));
+          }
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(detail.title,
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('ID: ${detail.id}'),
+              Text('Kategori: ${detail.category}'),
+              Text('Status: ${detail.status}'),
+              Text('Dibuat: ${detail.createdAt}'),
+              const SizedBox(height: 16),
+              const Text('Deskripsi',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text(detail.description),
+
+              if (detail.attachmentUrls.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text('Lampiran (${detail.attachmentUrls.length})',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 100,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: detail.attachmentUrls.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final url = detail.attachmentUrls[index];
+                      return GestureDetector(
+                        onTap: () => _openFullscreen(context, url),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            url,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                width: 100,
+                                height: 100,
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              );
+                            },
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 100,
+                              height: 100,
+                              color: Colors.grey.shade200,
+                              child: const Icon(Icons.broken_image_outlined),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+              const Text('Timeline',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (detail.timeline.isEmpty)
+                const Text('Belum ada aktivitas')
+              else
+                ...detail.timeline.map((e) => ListTile(
+                  dense: true,
+                  leading: Icon(
+                    e.isMine ? Icons.person_outline : Icons.support_agent,
+                    color: e.isMine ? Colors.blue : Colors.green,
+                  ),
+                  title: Text(
+                    e.authorLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                  ),
+                  subtitle: Text(e.message),
+                )),
+
+              // Catatan: TIDAK ADA lagi bagian "Tambah Komentar" di halaman
+              // ini. Untuk kirim komentar, arahkan user ke Tracking Tiket
+              // -> TicketTrackingDetailPage.
+            ],
+          );
+        },
       ),
     );
   }

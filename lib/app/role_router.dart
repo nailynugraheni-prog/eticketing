@@ -16,10 +16,16 @@ class RoleRouter extends StatelessWidget {
       return const LoginPage();
     }
 
-    if (auth.role == 'user') {
+    final role = auth.role;
+
+    if (role == 'user') {
       return const UserDashboardPage();
     }
 
-    return const StaffDashboardPage();
+    if (role == 'helpdesk' || role == 'admin' || role == 'staff') {
+      return const StaffDashboardPage();
+    }
+
+    return const LoginPage();
   }
 }

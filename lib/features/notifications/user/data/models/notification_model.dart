@@ -4,6 +4,7 @@ class NotificationModel {
   final String message;
   final String time;
   final bool isRead;
+  final String? ticketId;
 
   NotificationModel({
     required this.id,
@@ -11,7 +12,19 @@ class NotificationModel {
     required this.message,
     required this.time,
     required this.isRead,
+    this.ticketId,
   });
+
+  factory NotificationModel.fromMap(Map<String, dynamic> map) {
+    return NotificationModel(
+      id: map['id'].toString(),
+      title: map['title'] ?? '',
+      message: map['message'] ?? '',
+      time: map['created_at']?.toString().split('T').first ?? '',
+      isRead: map['is_read'] ?? false,
+      ticketId: map['ticket_id']?.toString(),
+    );
+  }
 
   NotificationModel copyWith({
     String? id,
@@ -19,6 +32,7 @@ class NotificationModel {
     String? message,
     String? time,
     bool? isRead,
+    String? ticketId,
   }) {
     return NotificationModel(
       id: id ?? this.id,
@@ -26,6 +40,7 @@ class NotificationModel {
       message: message ?? this.message,
       time: time ?? this.time,
       isRead: isRead ?? this.isRead,
+      ticketId: ticketId ?? this.ticketId,
     );
   }
 }
